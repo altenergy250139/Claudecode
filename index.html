@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌐 グローバルAIマーケティング ニュースコレクター</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;600;700;900&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #07070c; --card: rgba(255,255,255,0.025); --card-hover: rgba(255,255,255,0.055);
+    --border: rgba(255,255,255,0.06); --text: #fff; --text-dim: rgba(255,255,255,0.45);
+    --accent: #FF6B35; --accent2: #4ECDC4; --red: #FF4058;
+  }
+  body {
+    background: var(--bg); color: var(--text); min-height: 100vh;
+    font-family: 'Noto Sans JP', 'Hiragino Kaku Gothic ProN', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+  /* ─── Header ─── */
+  .header {
+    position: relative; text-align: center; padding: 54px 24px 44px;
+    border-bottom: 1px solid var(--border); overflow: hidden;
+  }
+  .header::before {
+    content: ''; position: absolute; inset: 0; opacity: .06;
+    background: radial-gradient(ellipse at 25% -10%, var(--accent) 0%, transparent 60%),
+                radial-gradient(ellipse at 75% 110%, var(--accent2) 0%, transparent 60%);
+  }
+  .header .tag {
+    font-family: 'Space Mono', monospace; font-size: 11px; letter-spacing: .3em;
+    text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 16px;
+  }
+  .header h1 {
+    font-size: clamp(25px, 5vw, 40px); font-weight: 900; line-height: 1.35;
+    letter-spacing: -.02em; margin-bottom: 12px;
+    background: linear-gradient(135deg, #fff 0%, var(--accent) 50%, var(--accent2) 100%);
+    background-size: 200% 200%; animation: grad 6s ease infinite;
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .header p { color: var(--text-dim); font-size: 14px; line-height: 1.7; max-width: 480px; margin: 0 auto 28px; }
+  /* ─── Button ─── */
+  .btn-main {
+    background: linear-gradient(135deg, var(--accent), var(--red)); color: #fff;
+    border: none; border-radius: 50px; padding: 16px 46px; font-size: 16px;
+    font-weight: 700; cursor: pointer; font-family: inherit; letter-spacing: .02em;
+    box-shadow: 0 4px 28px rgba(255,107,53,.3); transition: all .3s ease;
+    animation: float 3s ease-in-out infinite;
+  }
+  .btn-main:hover { transform: scale(1.05); box-shadow: 0 8px 36px rgba(255,107,53,.5); }
+  .btn-main:disabled { opacity: .5; cursor: not-allowed; animation: none; }
+  /* ─── API Key ─── */
+  .api-bar {
+    display: flex; gap: 10px; justify-content: center; align-items: center;
+    margin-bottom: 26px; flex-wrap: wrap; position: relative; z-index: 1;
+  }
+  .api-bar input {
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 16px; color: var(--text); font-size: 13px;
+    font-family: 'Space Mono', monospace; width: 340px; max-width: 80vw;
+    outline: none; transition: border-color .2s;
+  }
+  .api-bar input:focus { border-color: var(--accent); }
+  .api-bar input::placeholder { color: rgba(255,255,255,0.2); }
+  .api-bar .status {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+    transition: background .3s;
+  }
+  .api-bar .hint { font-size: 11px; color: var(--text-dim); width: 100%; text-align: center; }
+  .api-bar .hint a { color: var(--accent); text-decoration: none; }
+  /* ─── Region pills ─── */
+  .region-tags { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 22px; position: relative; z-index: 1; }
+  .region-tag {
+    padding: 5px 14px; border-radius: 20px; font-size: 12px;
+    border: 1px solid transparent;
+  }
+  /* ─── Loader ─── */
+  .loader-wrap { display: flex; flex-direction: column; align-items: center; padding: 60px 20px; gap: 24px; }
+  .orb {
+    width: 120px; height: 120px; border-radius: 50%; position: relative;
+    display: flex; align-items: center; justify-content: center;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .orb-inner {
+    width: 96px; height: 96px; border-radius: 50%; background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; font-weight: 700; color: var(--accent);
+  }
+  .loader-label { font-size: 16px; font-weight: 600; }
+  .loader-sub { color: var(--text-dim); font-size: 13px; }
+  /* ─── Summary ─── */
+  .summary-box {
+    background: linear-gradient(135deg, rgba(255,107,53,.07), rgba(78,205,196,.07));
+    border-radius: 20px; padding: 28px 32px; margin-bottom: 32px;
+    border: 1px solid var(--border); animation: fadeUp .5s ease both;
+  }
+  .summary-box .label {
+    font-family: 'Space Mono', monospace; font-size: 12px; font-weight: 700;
+    color: var(--accent); text-transform: uppercase; letter-spacing: .1em; margin-bottom: 14px;
+  }
+  .summary-box .body { color: rgba(255,255,255,.72); font-size: 14px; line-height: 1.9; white-space: pre-wrap; }
+  /* ─── Filters ─── */
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; animation: fadeUp .4s ease both; }
+  .filter-btn {
+    background: var(--card); border: 1px solid var(--border); color: var(--text-dim);
+    border-radius: 20px; padding: 6px 16px; font-size: 13px; cursor: pointer;
+    font-family: inherit; transition: all .2s;
+  }
+  .filter-btn.active { background: rgba(255,255,255,.1); color: #fff; border-color: rgba(255,255,255,.2); }
+  /* ─── Cards ─── */
+  .card {
+    background: var(--card); border-radius: 16px; border: 1px solid var(--border);
+    padding: 24px 28px; cursor: pointer; transition: all .3s ease; position: relative;
+    overflow: hidden; margin-bottom: 14px;
+  }
+  .card:hover { background: var(--card-hover); transform: translateY(-2px); }
+  .card .stripe { position: absolute; top: 0; left: 0; width: 4px; height: 100%; border-radius: 4px 0 0 4px; }
+  .card .meta { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .card .meta .badge {
+    padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  }
+  .card .meta .cat {
+    background: rgba(255,255,255,.05); color: rgba(255,255,255,.45);
+    padding: 4px 10px; border-radius: 20px; font-size: 11px;
+  }
+  .card h3 { font-size: 17px; font-weight: 700; line-height: 1.5; letter-spacing: .01em; margin-bottom: 10px; }
+  .card .desc {
+    color: rgba(255,255,255,.52); font-size: 14px; line-height: 1.7;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .card .desc.open { display: block; -webkit-line-clamp: unset; overflow: visible; }
+  .card .insight {
+    margin-top: 16px; padding: 14px 18px; border-radius: 10px;
+  }
+  .card .insight-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+  .card .insight-body { color: rgba(255,255,255,.65); font-size: 13px; line-height: 1.6; }
+  .card .toggle { text-align: right; margin-top: 12px; color: rgba(255,255,255,.25); font-size: 12px; }
+  /* ─── Empty ─── */
+  .empty { text-align: center; padding: 60px 20px; color: rgba(255,255,255,.18); }
+  .empty .icon { font-size: 48px; margin-bottom: 16px; opacity: .4; }
+  /* ─── Error ─── */
+  .error-box {
+    text-align: center; padding: 40px; border-radius: 16px;
+    background: rgba(255,64,88,.04); border: 1px solid rgba(255,64,88,.1); color: var(--red);
+  }
+  /* ─── Main container ─── */
+  .container { max-width: 820px; margin: 0 auto; padding: 30px 20px 60px; }
+  /* ─── Animations ─── */
+  @keyframes grad { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 20px rgba(255,107,53,.25)} 50%{box-shadow:0 0 44px rgba(255,107,53,.55)} }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:translateY(0)} }
+</style>
+</head>
+<body>
+<!-- ─── HEADER ─── -->
+<div class="header">
+  <div class="tag">AI Marketing Intelligence</div>
+  <h1>🌐 グローバルAIマーケティング<br>ニュースコレクター</h1>
+  <p>世界6地域のAIマーケティング最新動向を<br>ワンクリックで自動収集・翻訳・要約</p>
+  <div class="api-bar">
+    <div class="status" id="keyStatus" style="background:rgba(255,255,255,0.15)"></div>
+    <input type="password" id="apiKeyInput" placeholder="Anthropic API キーを入力 (sk-ant-...)" />
+    <div class="hint">
+      APIキーは <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a> で取得できます。キーはサーバーに送信されず、ブラウザ内のみで使用します。
+    </div>
+  </div>
+  <button class="btn-main" id="collectBtn" onclick="startCollection()">⚡ 最新情報を収集</button>
+  <div class="region-tags" id="regionTags"></div>
+</div>
+<!-- ─── CONTENT ─── -->
+<div class="container">
+  <div id="loaderArea"></div>
+  <div id="errorArea"></div>
+  <div id="summaryArea"></div>
+  <div id="filterArea"></div>
+  <div id="newsArea"></div>
+  <div id="emptyArea">
+    <div class="empty"><div class="icon">🛰️</div><div>ボタンを押して世界中のAIマーケティング情報を収集しましょう</div></div>
+  </div>
+</div>
+<script>
+// ─── Config ───
+const REGIONS = [
+  { id:"us",  label:"🇺🇸 北米",       query:"AI marketing strategy trends this week 2025",              color:"#FF6B35" },
+  { id:"eu",  label:"🇪🇺 欧州",       query:"European AI marketing automation news this week 2025",     color:"#4ECDC4" },
+  { id:"cn",  label:"🇨🇳 中国",       query:"China AI marketing technology latest news 2025",           color:"#FF4058" },
+  { id:"jp",  label:"🇯🇵 日本",       query:"日本 AI マーケティング 最新ニュース 2025",                   color:"#7B68EE" },
+  { id:"sea", label:"🌏 東南アジア",   query:"Southeast Asia AI digital marketing trends this week 2025", color:"#FFD93D" },
+  { id:"in",  label:"🇮🇳 インド",     query:"India AI marketing technology trends this week 2025",       color:"#6BCB77" },
+];
+let allNews = [];
+let currentFilter = "all";
+// ─── Init region tags ───
+(function initTags() {
+  const c = document.getElementById("regionTags");
+  REGIONS.forEach(r => {
+    const s = document.createElement("span");
+    s.className = "region-tag";
+    s.textContent = r.label;
+    s.style.background = r.color + "15";
+    s.style.color = r.color + "BB";
+    s.style.borderColor = r.color + "22";
+    c.appendChild(s);
+  });
+})();
+// ─── API key status ───
+const keyInput = document.getElementById("apiKeyInput");
+const keyDot   = document.getElementById("keyStatus");
+// Restore saved key
+const savedKey = localStorage.getItem("anthropic_api_key");
+if (savedKey) { keyInput.value = savedKey; keyDot.style.background = "#6BCB77"; }
+keyInput.addEventListener("input", () => {
+  const v = keyInput.value.trim();
+  keyDot.style.background = v.startsWith("sk-ant-") ? "#6BCB77" : v ? "#FFD93D" : "rgba(255,255,255,0.15)";
+  if (v.startsWith("sk-ant-")) localStorage.setItem("anthropic_api_key", v);
+});
+// ─── API call ───
+async function callClaude(apiKey, messages, useSearch = false) {
+  const body = {
+    model: "claude-sonnet-4-20250514",
+    max_tokens: 1500,
+    messages,
+  };
+  if (useSearch) body.tools = [{ type: "web_search_20250305", name: "web_search" }];
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error?.message || `API Error ${res.status}`);
+  }
+  return res.json();
+}
+// ─── Fetch news for one region ───
+async function fetchRegion(apiKey, region) {
+  const data = await callClaude(apiKey, [{
+    role: "user",
+    content: `Search for the latest AI marketing news and trends from the past week related to: "${region.query}"
+Find 2-3 of the most important and recent news items. Respond ONLY with a JSON array (no markdown, no backticks):
+[{"title":"日本語タイトル","summary":"日本語の3-4文の要約","category":"カテゴリ","keyInsight":"マーケターへの洞察1-2文"}]
+IMPORTANT: ALL text must be in Japanese. Translate everything. Return ONLY the JSON array.`
+  }], true);
+  const text = data.content?.filter(b => b.type === "text").map(b => b.text).join("\n") || "";
+  const clean = text.replace(/```json|```/g, "").trim();
+  try {
+    return JSON.parse(clean).map(it => ({ ...it, regionId: region.id }));
+  } catch {
+    const m = clean.match(/\[[\s\S]*\]/);
+    if (m) try { return JSON.parse(m[0]).map(it => ({ ...it, regionId: region.id })); } catch {}
+    return [];
+  }
+}
+// ─── Generate summary ───
+async function genSummary(apiKey, news) {
+  const titles = news.map(n => `[${n.regionId}] ${n.title}`).join("\n");
+  const data = await callClaude(apiKey, [{
+    role: "user",
+    content: `以下は今週のAIマーケティングに関する世界中のニュースのタイトル一覧です：
+${titles}
+これらから読み取れる主要なグローバルトレンドを3-4つ、各2文程度で日本語でまとめてください。マーケティング担当者への具体的なアクションアドバイスも1つ含めてください。プレーンテキストのみ、マークダウン不使用で。`
+  }]);
+  return data.content?.[0]?.text || "";
+}
+// ─── Render helpers ───
+function showLoader(pct, label) {
+  document.getElementById("loaderArea").innerHTML = `
+    <div class="loader-wrap">
+      <div class="orb" style="background:conic-gradient(var(--accent) ${pct}%, rgba(255,107,53,0.1) ${pct}%)">
+        <div class="orb-inner">${Math.round(pct)}%</div>
+      </div>
+      <div style="text-align:center">
+        <div class="loader-label">${label} の情報を収集中...</div>
+        <div class="loader-sub">AIが世界中のマーケティング情報を翻訳・要約しています</div>
+      </div>
+    </div>`;
+}
+function hideLoader() { document.getElementById("loaderArea").innerHTML = ""; }
+function showError(msg) {
+  document.getElementById("errorArea").innerHTML = `
+    <div class="error-box">
+      <div style="font-size:40px;margin-bottom:12px">⚠️</div>
+      <div style="font-weight:700;margin-bottom:8px">エラーが発生しました</div>
+      <div style="font-size:13px;color:var(--text-dim)">${msg}</div>
+    </div>`;
+}
+function renderSummary(text) {
+  document.getElementById("summaryArea").innerHTML = `
+    <div class="summary-box">
+      <div class="label">📊 今週のグローバルトレンドサマリー</div>
+      <div class="body">${text}</div>
+    </div>`;
+}
+function renderFilters() {
+  const c = document.getElementById("filterArea");
+  let html = `<div class="filters">`;
+  html += `<button class="filter-btn ${currentFilter==='all'?'active':''}" onclick="applyFilter('all')">すべて (${allNews.length})</button>`;
+  REGIONS.forEach(r => {
+    const cnt = allNews.filter(n => n.regionId === r.id).length;
+    if (!cnt) return;
+    const act = currentFilter === r.id;
+    html += `<button class="filter-btn" onclick="applyFilter('${r.id}')"
+      style="background:${act ? r.color+'22':'var(--card)'};color:${act ? r.color:'var(--text-dim)'};border-color:${act ? r.color+'44':'var(--border)'}"
+    >${r.label} (${cnt})</button>`;
+  });
+  html += `</div>`;
+  c.innerHTML = html;
+}
+function renderNews() {
+  const list = currentFilter === "all" ? allNews : allNews.filter(n => n.regionId === currentFilter);
+  const c = document.getElementById("newsArea");
+  if (!list.length) { c.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-dim);font-size:14px">この地域のニュースはありません</div>`; return; }
+  c.innerHTML = list.map((item, i) => {
+    const r = REGIONS.find(x => x.id === item.regionId) || REGIONS[0];
+    return `
+    <div class="card" style="animation:fadeUp .5s ease ${i*0.08}s both" onclick="toggleCard(this)" onmouseenter="this.style.borderColor='${r.color}44'" onmouseleave="this.style.borderColor='var(--border)'">
+      <div class="stripe" style="background:${r.color}"></div>
+      <div class="meta">
+        <span class="badge" style="background:${r.color}22;color:${r.color}">${r.label}</span>
+        ${item.category ? `<span class="cat">${item.category}</span>` : ''}
+      </div>
+      <h3>${item.title || ''}</h3>
+      <p class="desc">${item.summary || ''}</p>
+      ${item.keyInsight ? `<div class="insight" style="display:none;background:${r.color}0D;border-left:3px solid ${r.color}44">
+        <div class="insight-label" style="color:${r.color}">💡 キーインサイト</div>
+        <div class="insight-body">${item.keyInsight}</div>
+      </div>` : ''}
+      <div class="toggle">▼ 詳細を見る</div>
+    </div>`;
+  }).join("");
+}
+function toggleCard(el) {
+  const desc = el.querySelector(".desc");
+  const ins  = el.querySelector(".insight");
+  const tog  = el.querySelector(".toggle");
+  const open = desc.classList.toggle("open");
+  if (ins) ins.style.display = open ? "block" : "none";
+  tog.textContent = open ? "▲ 閉じる" : "▼ 詳細を見る";
+}
+function applyFilter(id) {
+  currentFilter = id;
+  renderFilters();
+  renderNews();
+}
+// ─── Main ───
+async function startCollection() {
+  const apiKey = keyInput.value.trim();
+  if (!apiKey) { alert("APIキーを入力してください"); keyInput.focus(); return; }
+  const btn = document.getElementById("collectBtn");
+  btn.disabled = true; btn.textContent = "収集中..."; btn.style.animation = "none";
+  document.getElementById("emptyArea").innerHTML = "";
+  document.getElementById("errorArea").innerHTML = "";
+  document.getElementById("summaryArea").innerHTML = "";
+  document.getElementById("filterArea").innerHTML = "";
+  document.getElementById("newsArea").innerHTML = "";
+  allNews = [];
+  currentFilter = "all";
+  try {
+    for (let i = 0; i < REGIONS.length; i++) {
+      showLoader((i / (REGIONS.length + 1)) * 100, REGIONS[i].label);
+      const items = await fetchRegion(apiKey, REGIONS[i]);
+      allNews.push(...items);
+      renderFilters();
+      renderNews();
+    }
+    showLoader(90, "トレンド分析");
+    const summary = await genSummary(apiKey, allNews);
+    renderSummary(summary);
+    hideLoader();
+    renderFilters();
+    renderNews();
+  } catch (e) {
+    hideLoader();
+    showError(e.message || "不明なエラー");
+  }
+  btn.disabled = false; btn.textContent = "🔄 再収集する";
+}
+</script>
+</body>
+</html>
