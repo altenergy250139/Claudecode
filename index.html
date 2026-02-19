@@ -152,12 +152,12 @@
 </div>
 <script>
 const REGIONS = [
-  { id:"us",  label:"🇺🇸 北米",       query:"AI marketing strategy trends 2025",                    color:"#FF6B35" },
-  { id:"eu",  label:"🇪🇺 欧州",       query:"European AI marketing automation 2025",                color:"#4ECDC4" },
-  { id:"cn",  label:"🇨🇳 中国",       query:"China AI marketing technology 2025",                   color:"#FF4058" },
-  { id:"jp",  label:"🇯🇵 日本",       query:"AI マーケティング 最新 2025",                            color:"#7B68EE" },
-  { id:"sea", label:"🌏 東南アジア",   query:"Southeast Asia AI digital marketing 2025",             color:"#FFD93D" },
-  { id:"in",  label:"🇮🇳 インド",     query:"India AI marketing technology 2025",                   color:"#6BCB77" },
+  { id:"us",  label:"🇺🇸 北米",       query:"アメリカ AI マーケティング 戦略 トレンド",     color:"#FF6B35" },
+  { id:"eu",  label:"🇪🇺 欧州",       query:"ヨーロッパ AI マーケティング 自動化 最新",     color:"#4ECDC4" },
+  { id:"cn",  label:"🇨🇳 中国",       query:"中国 AI マーケティング テクノロジー 最新",     color:"#FF4058" },
+  { id:"jp",  label:"🇯🇵 日本",       query:"日本 AI マーケティング 最新ニュース",          color:"#7B68EE" },
+  { id:"sea", label:"🌏 東南アジア",   query:"東南アジア AI デジタルマーケティング 最新",    color:"#FFD93D" },
+  { id:"in",  label:"🇮🇳 インド",     query:"インド AI マーケティング テクノロジー 最新",   color:"#6BCB77" },
 ];
 let allNews = [];
 let currentFilter = "all";
@@ -179,7 +179,7 @@ let currentFilter = "all";
 const RSS_PROXY = "https://api.rss2json.com/v1/api.json?rss_url=";
 
 async function fetchRegionRSS(region) {
-  const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(region.query)}&hl=en&gl=US&ceid=US:en`;
+  const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(region.query)}&hl=ja&gl=JP&ceid=JP:ja`;
   const url = RSS_PROXY + encodeURIComponent(rssUrl);
   const res = await fetch(url);
   if (!res.ok) throw new Error(`RSS fetch failed for ${region.label}`);
