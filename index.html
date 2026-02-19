@@ -112,8 +112,14 @@
   .card h3 a:hover { text-decoration: underline; }
   .card .desc {
     color: rgba(255,255,255,.52); font-size: 14px; line-height: 1.7;
-    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
   }
+  .card .desc.open { display: block; -webkit-line-clamp: unset; overflow: visible; }
+  .card .toggle {
+    text-align: right; margin-top: 8px; color: rgba(255,255,255,.25); font-size: 12px;
+    cursor: pointer;
+  }
+  .card .toggle:hover { color: rgba(255,255,255,.5); }
   .card .source-link {
     display: inline-block; margin-top: 14px; color: var(--accent); font-size: 13px;
     text-decoration: none; font-weight: 600;
@@ -177,6 +183,43 @@ let currentFilter = "all";
 
 // RSS to JSON proxy
 const RSS_PROXY = "https://api.rss2json.com/v1/api.json?rss_url=";
+// CORS proxy for fetching article content
+const CORS_PROXY = "https://api.allorigins.win/raw?url=";
+
+// Extract article body text from HTML
+function extractArticleText(html) {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  // Remove scripts, styles, nav, header, footer, ads
+  doc.querySelectorAll("script,style,nav,header,footer,aside,iframe,form,.ad,.ads,.advertisement,[role='navigation'],[role='banner']").forEach(el => el.remove());
+  // Try to find article content
+  const article = doc.querySelector("article") || doc.querySelector("[role='main']") || doc.querySelector("main") || doc.querySelector(".article-body") || doc.querySelector(".post-content") || doc.querySelector(".entry-content");
+  const target = article || doc.body;
+  if (!target) return "";
+  // Get paragraphs
+  const paragraphs = target.querySelectorAll("p");
+  if (paragraphs.length > 0) {
+    const texts = [];
+    paragraphs.forEach(p => {
+      const t = p.textContent.trim();
+      if (t.length > 30) texts.push(t);
+    });
+    return texts.slice(0, 5).join(" ").slice(0, 500);
+  }
+  // Fallback: get all text
+  return target.textContent.replace(/\s+/g, " ").trim().slice(0, 500);
+}
+
+// Fetch and extract article summary
+async function fetchArticleSummary(link) {
+  try {
+    const res = await fetch(CORS_PROXY + encodeURIComponent(link), { signal: AbortSignal.timeout(8000) });
+    if (!res.ok) return "";
+    const html = await res.text();
+    return extractArticleText(html);
+  } catch {
+    return "";
+  }
+}
 
 async function fetchRegionRSS(region) {
   const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(region.query)}&hl=ja&gl=JP&ceid=JP:ja`;
@@ -185,23 +228,33 @@ async function fetchRegionRSS(region) {
   if (!res.ok) throw new Error(`RSS fetch failed for ${region.label}`);
   const data = await res.json();
   if (data.status !== "ok" || !data.items) return [];
-  return data.items.slice(0, 3).map(item => {
-    const desc = item.description
-      ? item.description.replace(/<[^>]*>/g, "").trim().slice(0, 200)
-      : "";
+  const items = data.items.slice(0, 3);
+  // Fetch article content in parallel
+  const results = await Promise.all(items.map(async item => {
     const pubDate = item.pubDate ? new Date(item.pubDate) : null;
     const dateStr = pubDate
       ? `${pubDate.getFullYear()}/${(pubDate.getMonth()+1).toString().padStart(2,"0")}/${pubDate.getDate().toString().padStart(2,"0")}`
       : "";
+    const link = item.link || "";
+    let summary = "";
+    if (link) {
+      summary = await fetchArticleSummary(link);
+    }
+    if (!summary) {
+      summary = item.description
+        ? item.description.replace(/<[^>]*>/g, "").trim().slice(0, 200)
+        : item.title;
+    }
     return {
       title: item.title || "No title",
-      summary: desc || item.title,
-      link: item.link || "",
+      summary,
+      link,
       source: item.author || "",
       date: dateStr,
       regionId: region.id,
     };
-  });
+  }));
+  return results;
 }
 
 function showLoader(pct, label) {
@@ -212,7 +265,7 @@ function showLoader(pct, label) {
       </div>
       <div style="text-align:center">
         <div class="loader-label">${label} の情報を収集中...</div>
-        <div class="loader-sub">世界中のマーケティング情報を取得しています</div>
+        <div class="loader-sub">ニュース記事の本文を取得・要約しています</div>
       </div>
     </div>`;
 }
@@ -266,6 +319,7 @@ function renderNews() {
   }
   c.innerHTML = list.map((item, i) => {
     const r = REGIONS.find(x => x.id === item.regionId) || REGIONS[0];
+    const hasLongText = item.summary && item.summary.length > 120;
     return `
     <div class="card" style="animation:fadeUp .5s ease ${i*0.06}s both">
       <div class="stripe" style="background:${r.color}"></div>
@@ -276,9 +330,17 @@ function renderNews() {
       </div>
       <h3><a href="${item.link}" target="_blank" rel="noopener">${item.title}</a></h3>
       <p class="desc">${item.summary}</p>
-      ${item.link ? `<a class="source-link" href="${item.link}" target="_blank" rel="noopener">📰 記事を読む →</a>` : ''}
+      ${hasLongText ? `<div class="toggle" onclick="toggleCard(this)">▼ もっと読む</div>` : ''}
+      ${item.link ? `<a class="source-link" href="${item.link}" target="_blank" rel="noopener">📰 元記事を読む →</a>` : ''}
     </div>`;
   }).join("");
+}
+
+function toggleCard(el) {
+  const card = el.closest(".card");
+  const desc = card.querySelector(".desc");
+  const open = desc.classList.toggle("open");
+  el.textContent = open ? "▲ 閉じる" : "▼ もっと読む";
 }
 
 function applyFilter(id) {
